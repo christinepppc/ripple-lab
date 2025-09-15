@@ -1,0 +1,72 @@
+/* ------------- generic palette ------------- */
+* { font-family: "Inter"; }
+
+/* ------------- container frames ------------- */
+#LeftColumn {
+    background-color: #F5F5F5;
+    border-radius: 20px;
+    min-width: 400px;  /* increased left column width */
+}
+#RightColumn {
+    background-color: white;
+    border-radius: 30px;
+    margin: 10px;
+    border: none;
+}
+
+/* ------------- list-like widgets ------------- */
+QListWidget, QTreeWidget, QTableWidget {
+    background-color: white;
+    border: 1px solid #FFE8E8;
+    border-radius: 5px;
+}
+QListWidget::item, QTreeWidget::item, QTableWidget::item {
+    padding: 6px;
+    border-bottom: 1px solid #FFE8E8;
+}
+QListWidget::item:selected,
+QTreeWidget::item:selected,
+QTableWidget::item:selected {
+    background-color: #FFE8E8;
+}
+
+/* ------------- left-pane process ripple buttons ------------- */
+QPushButton[class = "FunctionBtn"] {
+    background-color: #FFE8E8;
+    text-align: left;
+    padding: 10px;
+    font-weight: bold;
+    border: 1px solid #FFE8E8;
+    border-radius: 5px;
+    margin: 2px;
+}
+QPushButton[class = "FunctionBtn"]:hover { background-color: white; }
+
+/* ------------- rounded action buttons ------------- */
+QPushButton.ActionBtn {
+    background-color: #FFD7D7;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    margin: 10px;
+}
+QPushButton.ActionBtn:hover { background-color: #FFE8E8; }
+
+/* ------------- cancel buttons ------------- */
+QPushButton.CancelBtn {
+    background-color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    border: 1px solid #FFD7D7;
+}
+QPushButton.CancelBtn:hover { background-color: #FFE8E8; }
+
+/* ------------- QGroupBox style not working now ------------- */
+QGroupBox[prominence = "true"]::title {
+    font-weight: bold;     /* or 600 */
+    font-size: 13pt;
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 4px;
+}
