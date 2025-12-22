@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ripple-gui"
 version = "0.1.0"
-description = "PyQt6 GUI for ripple analysis"
+description = "PyQt5 GUI for ripple analysis"
 requires-python = ">=3.9"
 dependencies = [
-  "PyQt6", "pyqtgraph"
+  "PyQt5", "pyqtgraph"
   # do NOT list ripple-core here; we install both editable locally
 ]
 

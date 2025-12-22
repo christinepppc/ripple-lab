@@ -2,7 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Tuple, List, Dict, Optional
 from scipy.signal import firwin, filtfilt, find_peaks
-from analysis.multitaper_spectrogram_python import multitaper_spectrogram
+from .multitaper_spectrogram_python import multitaper_spectrogram
 
 __all__ = [
     "DetectionResult",

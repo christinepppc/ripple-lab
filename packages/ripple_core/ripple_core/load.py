@@ -3,7 +3,7 @@ import os
 import numpy as np
 import scipy.io
 from scipy.io import loadmat
-from gui.windows import MainWindow
+# from gui.windows import MainWindow  # Removed circular import
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -11,7 +11,7 @@ from typing import List, Optional
 # Configuration constants
 # --------------------------------------------------------------------------------
 # Base directory for monkey data
-MONKEYDIR = '/vol/brains/bd3/Archie_RecStim_vSUBNETS220_2nd'
+MONKEYDIR = '/vol/brains/bd3/pesaranlab/Archie_RecStim_vSUBNETS220_2nd'
 # Number of channels and sampling parameters
 nCh = 220              # total channels per recording
 Fs = 1000              # sampling frequency (Hz)
@@ -246,7 +246,7 @@ class UserInput:
     mer_dur:     int
     window_size: int
 
-def snapshot_inputs(window: MainWindow) -> UserInput:
+def snapshot_inputs(window) -> UserInput:
     """Grab every relevant widget value and return a dataclass."""
     mode = window.mode_combo.currentText()
 

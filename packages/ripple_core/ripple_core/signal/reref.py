@@ -5,21 +5,46 @@ from typing import Iterable, Tuple, Dict
 import numpy as np
 import scipy.io as sio
 
-from .pairs import make_bipolar_pairs_from_grid
+from .pairs import make_bipolar_pairs_from_grid, WHITE_MATTER_CHANNELS
 
 def _find_single_mat(ch_dir: Path) -> Path | None:
-    """Find exactly one .mat under chan### (prefer lfp.mat)."""
+    """Find exactly one .mat under chan### (prefer lfp.mat, fallback to any .mat)."""
+    # First try to find lfp.mat (original expected format)
     cand = list(ch_dir.glob("lfp.mat"))
     if len(cand) == 1:
         return cand[0]
-    # fallback: any single .mat
+    
+    # For the actual data structure, look for .mat files with session/trial info
+    # Pattern: sess###_trial###_chan###_*.mat
+    cand = list(ch_dir.glob("sess*_trial*_chan*.mat"))
+    if len(cand) == 1:
+        return cand[0]
+    
+    # Fallback: any single .mat file
     cand = list(ch_dir.glob("*.mat"))
     if len(cand) == 1:
         return cand[0]
     return None
 
 def _load_lfp(mat_path: Path) -> tuple[np.ndarray, float | None]:
-    S = sio.loadmat(mat_path, squeeze_me=True, struct_as_record=False)
+    """Load LFP data from .mat file, handling both v7.0 and v7.3 formats."""
+    try:
+        # Try scipy.io first (for v7.0 files)
+        S = sio.loadmat(mat_path, squeeze_me=True, struct_as_record=False)
+    except Exception:
+        # If that fails, try h5py for v7.3 files
+        try:
+            import h5py
+            with h5py.File(mat_path, 'r') as f:
+                S = {}
+                for key in f.keys():
+                    if not key.startswith('__'):
+                        S[key] = f[key][:]
+        except ImportError:
+            raise ImportError("Please install h5py to read MATLAB v7.3 files: pip install h5py")
+        except Exception as e:
+            raise IOError(f"Could not read {mat_path}: {e}")
+    
     if "lfp" not in S:
         raise KeyError(f"'lfp' missing in {mat_path}")
     x = np.asarray(S["lfp"]).astype(np.float32).ravel()
@@ -29,6 +54,11 @@ def _load_lfp(mat_path: Path) -> tuple[np.ndarray, float | None]:
             fs = float(np.asarray(S["fs"]).squeeze())
         except Exception:
             fs = None
+    
+    # If no sampling rate found, use default of 1000 Hz
+    if fs is None or np.isnan(fs):
+        fs = 1000.0
+    
     return x, fs
 
 def reref_trial(rootDir: str | Path, badCh: Iterable[int] = (), prefer="horizontal") -> Dict:
@@ -46,10 +76,13 @@ def reref_trial(rootDir: str | Path, badCh: Iterable[int] = (), prefer="horizont
     out_dir = root.with_name(root.name + "_re-referenced")
     out_dir.mkdir(exist_ok=True)
 
-    # discover available channels
+    # discover available channels (excluding white matter channels)
     avail = np.zeros(221, dtype=bool)  # 1..220
     chan_path = [None]*221
     for ch in range(1, 221):
+        # Skip white matter channels
+        if ch in WHITE_MATTER_CHANNELS:
+            continue
         ch_dir = root / f"chan{ch:03d}"
         if not ch_dir.is_dir():
             continue
@@ -85,24 +118,41 @@ def reref_trial(rootDir: str | Path, badCh: Iterable[int] = (), prefer="horizont
             T = min(xi.size, xj.size)
             if T == 0:
                 continue
-            lfp_ref = (xi[:T] - xj[:T]).astype(np.float32)
 
             fs = fs_i if fs_i is not None else (fs_j if fs_j is not None else np.nan)
-            pair = np.array([i, j], dtype=np.int32)
-            note = f"bipolar neighbor ({tag}): ch{i} - ch{j} (within bank)"
-
+            
+            # Create output directory for anchor channel
             out_ch_dir = out_dir / f"chan{i:03d}_ref"
             out_ch_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Original direction: i - j
+            lfp_ref_original = (xi[:T] - xj[:T]).astype(np.float32)
+            pair_original = np.array([i, j], dtype=np.int32)
+            note_original = f"bipolar neighbor ({tag}): ch{i} - ch{j} (within bank)"
+            
             sio.savemat(out_ch_dir / "lfp_ref.mat", {
-                "lfp_ref": lfp_ref,
+                "lfp_ref": lfp_ref_original,
                 "fs": fs,
-                "pair": pair,
-                "note": note
+                "pair": pair_original,
+                "note": note_original
+            }, do_compression=True)
+            
+            # Flipped direction: j - i (saved as additional file)
+            lfp_ref_flipped = (xj[:T] - xi[:T]).astype(np.float32)
+            pair_flipped = np.array([j, i], dtype=np.int32)
+            note_flipped = f"bipolar neighbor ({tag}) flipped: ch{j} - ch{i} (within bank)"
+            
+            sio.savemat(out_ch_dir / "lfp_ref_flipped.mat", {
+                "lfp_ref": lfp_ref_flipped,
+                "fs": fs,
+                "pair": pair_flipped,
+                "note": note_flipped
             }, do_compression=True)
 
             anchor_done[i] = True  # crucial guard, like MATLAB
             pairs_used.append([i, j])
-            n_saved += 1
+            pairs_used.append([j, i])  # Add flipped pair to tracking
+            n_saved += 2  # Count both directions
         return n_saved
 
     counts = {}

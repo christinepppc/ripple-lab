@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.gridspec as gridspec
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from analysis.analyze import GrandAverageResult
+from ripple_core.analyze import GrandAverageResult
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from PyQt5.QtGui import QPixmap, QImage, QColor
 import numpy as np

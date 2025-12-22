@@ -3,6 +3,11 @@ from __future__ import annotations
 from typing import Iterable, Tuple, List
 import numpy as np
 
+# White matter channels to exclude from bipolar referencing
+WHITE_MATTER_CHANNELS = {
+    2, 10, 14, 16, 25, 26, 28, 36, 39, 42, 46, 53, 54, 55, 57, 59, 60, 63, 64, 66, 67, 69, 70, 71, 72, 73, 74, 75, 76, 78, 80, 81, 85, 87, 94, 95, 100, 101, 102, 106, 111, 117, 125, 128, 131, 134, 135, 136, 137, 138, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 156, 157, 158, 163, 164, 165, 167, 168, 171, 173, 174, 175, 176, 178, 180, 182, 184, 192, 198, 199, 200, 201, 202, 204, 207, 208, 210, 212, 215, 216, 218
+}
+
 # Exact 26 x 10 grid from your MATLAB
 _LAYOUT_26x10 = np.array([
     [  2,  1,  4,  3, 98,  0,  0,  0,  0,  0],
@@ -49,10 +54,12 @@ def make_bipolar_pairs_from_grid(badCh: Iterable[int] = ()) -> Tuple[np.ndarray,
     Returns:
       pairs_h: (K_h, 2) i j with j = right neighbor  (i - j)
       pairs_v: (K_v, 2) i j with j = below neighbor  (i - j)
-    Applies: same-bank constraint; skips zeros and bad channels.
+    Applies: same-bank constraint; skips zeros, bad channels, and white matter channels.
     """
     G = _LAYOUT_26x10
     bad = set(int(b) for b in badCh)
+    # Combine bad channels with white matter channels
+    excluded = bad | WHITE_MATTER_CHANNELS
     R, C = G.shape
     pairs_h: List[tuple[int,int]] = []
     pairs_v: List[tuple[int,int]] = []
@@ -62,7 +69,7 @@ def make_bipolar_pairs_from_grid(badCh: Iterable[int] = ()) -> Tuple[np.ndarray,
         for c in range(C-1):
             i, j = int(G[r,c]), int(G[r,c+1])
             if i==0 or j==0:         continue
-            if i in bad or j in bad: continue
+            if i in excluded or j in excluded: continue
             if _bank_of(i) != _bank_of(j): continue
             pairs_h.append((i,j))
 
@@ -71,7 +78,7 @@ def make_bipolar_pairs_from_grid(badCh: Iterable[int] = ()) -> Tuple[np.ndarray,
         for c in range(C):
             i, j = int(G[r,c]), int(G[r+1,c])
             if i==0 or j==0:         continue
-            if i in bad or j in bad: continue
+            if i in excluded or j in excluded: continue
             if _bank_of(i) != _bank_of(j): continue
             pairs_v.append((i,j))
 

@@ -459,8 +459,8 @@ class MainWindow(QMainWindow):
         sets self.lfp to an (n_chans×n_samples) np.ndarray
         updates statusBar with a summary message
         """
-        from ripple_core.analysis.load import load_movie_database, load_electrodes, load_region_data, load_all_channels
-        from ripple_core.analysis.visualize import plot_processing_notebook
+        from ripple_core.load import load_movie_database, load_electrodes, load_region_data, load_all_channels
+        from ripple_core.visualize import plot_processing_notebook
         # make sure to clear all tabs before loading a new event
         # 1) Processing Notebook
         if hasattr(self, "fig_note"):
@@ -564,8 +564,8 @@ class MainWindow(QMainWindow):
         self.can_note.draw()
 
     def on_detect(self):
-        from ripple_core.analysis.analyze import detect_ripples
-        from ripple_core.analysis.visualize import plot_processing_notebook
+        from ripple_core.analyze import detect_ripples
+        from ripple_core.visualize import plot_processing_notebook
 
         # from analysis.visualize import plot_processing_notebook
         if self.lfp is None:
@@ -611,7 +611,7 @@ class MainWindow(QMainWindow):
         self.can_note.draw()
 
     def on_normalize(self):
-        from ripple_core.analysis.analyze import normalize_ripples
+        from ripple_core.analyze import normalize_ripples
         if self.det_res is None:
             QMessageBox.warning(self, "Error", "Run detection first!")
             return
@@ -673,7 +673,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Normalization complete")
     
     def on_reject(self):
-        from ripple_core.analysis.analyze import reject_ripples
+        from ripple_core.analyze import reject_ripples
         if self.norm_res is None:
             QMessageBox.warning(self, "Error", "Normalize first!")
             return
@@ -714,7 +714,7 @@ class MainWindow(QMainWindow):
         (raw/bp LFP, spectrogram, spectra...). Fixes index mismatch by binding
         the true data index (data_idx) when connecting signals.
         """
-        from ripple_core.analysis.visualize import make_lfp_pix, make_spectrum_pix, make_spec_pix
+        from ripple_core.visualize import make_lfp_pix, make_spectrum_pix, make_spec_pix
 
         if self.det_res is None or self.rej_res is None or self.norm_res is None:
             return
@@ -820,8 +820,8 @@ class MainWindow(QMainWindow):
 
     
     def on_visualize(self):
-        from ripple_core.analysis.analyze import find_avg
-        from ripple_core.analysis.visualize import plot_grand_average_grid
+        from ripple_core.analyze import find_avg
+        from ripple_core.visualize import plot_grand_average_grid
         if self.rej_res is None:
             QMessageBox.warning(self, "Error", "Reject first!")
             return
@@ -857,9 +857,9 @@ class MainWindow(QMainWindow):
         self.status_lbl.show()
 
     def on_save(self):
-        from ripple_core.analysis.load import UserInput
-        from ripple_core.analysis.analyze import find_avg
-        from ripple_core.analysis.visualize import plot_grand_average_grid
+        from ripple_core.load import UserInput
+        from ripple_core.analyze import find_avg
+        from ripple_core.visualize import plot_grand_average_grid
         if self.rej_res is None:
             QMessageBox.warning(self, "Error", "Reject and visualize first!")
             return

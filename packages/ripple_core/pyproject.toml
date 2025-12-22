@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,9 +8,12 @@ version = "0.1.0"
 description = "Reusable ripple analysis library"
 requires-python = ">=3.9"
 dependencies = [
-  "numpy", "scipy", "pandas", "mne", "pywavelets", "h5py", "xarray", "joblib"
+  "numpy", "scipy", "pandas", "mne", "pywavelets", "h5py", "xarray", "joblib", "colorcet"
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ripple_core*"]
+
+[tool.setuptools.package-dir]
+"" = "."
