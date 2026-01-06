@@ -9,7 +9,11 @@ from backend.state import STORE, SessionState
 from ripple_core.ripple_core.load import load_movie_database, load_electrodes, load_region_data, load_all_channels
 from ripple_core.ripple_core.analyze import detect_ripples, normalize_ripples, reject_ripples, find_avg
 
-app = FastAPI()
+app = FastAPI(
+    title="Ripple Analysis API",
+    description="Backend API for Ripple Analysis GUI",
+    version="0.1.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,6 +21,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Root endpoint
+@app.get("/")
+def root():
+    return {
+        "message": "Ripple Analysis API",
+        "docs": "/docs",
+        "frontend": "Please access the frontend at http://localhost:3000"
+    }
 
 # ---------- Requests ----------
 class LoadReq(BaseModel):
