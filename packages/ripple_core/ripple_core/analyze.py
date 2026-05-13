@@ -11,6 +11,8 @@ __all__ = [
     "normalize_ripples",
     "RejectionResult",
     "reject_ripples",
+    "reject_ripples_fast",
+    "FastRejectionResult",
 ]
 
 # -----------------------------------------------------------------------------
@@ -405,6 +407,157 @@ def reject_ripples(
     markers[reject_idx] = True
 
     return RejectionResult(pass_idx, reject_idx, reasons, markers, counters)
+
+
+# -----------------------------------------------------------------------------
+# 3b. Fast Rejection (no per-ripple multitaper)
+# -----------------------------------------------------------------------------
+@dataclass
+class FastRejectionResult:
+    """Output from :func:`reject_ripples_fast`."""
+    pass_idx: List[int]
+    reject_idx: List[int]
+    reasons: List[str]
+    markers: np.ndarray  # boolean mask (N,) – True if rejected
+    counters: Dict[str, int]
+    features: Dict[str, np.ndarray]  # computed features for diagnostics
+
+
+def reject_ripples_fast(
+    lfp: np.ndarray,
+    bp_lfp: np.ndarray,
+    fs: int,
+    real_duration: np.ndarray,
+    peak_idx: np.ndarray,
+    env_rip: np.ndarray,
+    mu: float,
+    sd: float,
+    strict_threshold: float,
+    *,
+    rp_band: Tuple[int, int] = (100, 140),
+    min_duration_ms: float = 30.0,
+    max_duration_ms: float = 150.0,
+    min_sharpness: float = 0.5,
+    bandpower_zscore_min: float = 2.0,
+) -> FastRejectionResult:
+    """
+    Fast rejection using cheap time-domain + bandpower features.
+    No per-ripple multitaper spectrograms.
+    
+    Criteria:
+    1. Strict amplitude threshold (peak z-score >= strict_threshold)
+    2. Duration in valid range
+    3. Bandpower RMS in ripple band (100-140 Hz) above baseline
+    4. Sharpness: peak-to-trough ratio relative to duration
+    
+    Args:
+        lfp: raw LFP signal
+        bp_lfp: bandpass-filtered LFP (ripple band)
+        fs: sampling rate
+        real_duration: (N, 2) start/end indices for each ripple
+        peak_idx: (N,) peak index for each ripple
+        env_rip: envelope (from detection)
+        mu, sd: baseline mean and std of envelope
+        strict_threshold: minimum z-score for peak amplitude
+        rp_band: ripple frequency band
+        min_duration_ms, max_duration_ms: duration validity range
+        min_sharpness: minimum peak-to-trough / duration ratio
+        bandpower_zscore_min: minimum z-score for ripple-band RMS
+    
+    Returns:
+        FastRejectionResult with pass/reject indices, reasons, and features
+    """
+    N = len(real_duration)
+    reject_idx, reasons, pass_idx = [], [], []
+    counters = {
+        "below_strict": 0,
+        "duration": 0,
+        "bandpower": 0,
+        "sharpness": 0,
+    }
+    
+    # Compute global baseline bandpower RMS (from entire signal)
+    baseline_bp_rms = np.sqrt(np.mean(bp_lfp ** 2))
+    baseline_bp_std = np.std(bp_lfp)
+    
+    # Features for diagnostics
+    peak_z_vals = np.zeros(N)
+    durations = np.zeros(N)
+    bandpowers = np.zeros(N)
+    sharpness_vals = np.zeros(N)
+    
+    for q in range(N):
+        s_idx, e_idx = real_duration[q]
+        pk = peak_idx[q]
+        
+        # Feature 1: Peak amplitude z-score
+        if env_rip.ndim == 2:
+            peak_amp = env_rip[q, pk]
+        else:
+            peak_amp = env_rip[pk]
+        peak_z = (peak_amp - mu) / sd if sd > 0 else 0
+        peak_z_vals[q] = peak_z
+        
+        # Feature 2: Duration
+        dur_samples = e_idx - s_idx + 1
+        dur_ms = dur_samples * 1000.0 / fs
+        durations[q] = dur_ms
+        
+        # Feature 3: Bandpower RMS (ripple band)
+        ripple_seg = bp_lfp[s_idx:e_idx + 1]
+        rms = np.sqrt(np.mean(ripple_seg ** 2))
+        bandpowers[q] = rms
+        bp_zscore = (rms - baseline_bp_rms) / baseline_bp_std if baseline_bp_std > 0 else 0
+        
+        # Feature 4: Sharpness (peak-to-trough range / duration)
+        raw_seg = lfp[s_idx:e_idx + 1]
+        peak_to_trough = np.ptp(raw_seg)  # peak-to-peak range
+        sharpness = peak_to_trough / dur_samples if dur_samples > 0 else 0
+        sharpness_vals[q] = sharpness
+        
+        # Rejection criteria
+        # Criterion 1: Strict amplitude threshold
+        if not np.isfinite(peak_z) or peak_z < strict_threshold:
+            counters["below_strict"] += 1
+            reject_idx.append(q)
+            reasons.append("below_strict")
+            continue
+        
+        # Criterion 2: Duration range
+        if dur_ms < min_duration_ms or dur_ms > max_duration_ms:
+            counters["duration"] += 1
+            reject_idx.append(q)
+            reasons.append("duration")
+            continue
+        
+        # Criterion 3: Bandpower above baseline
+        if not np.isfinite(bp_zscore) or bp_zscore < bandpower_zscore_min:
+            counters["bandpower"] += 1
+            reject_idx.append(q)
+            reasons.append("bandpower")
+            continue
+        
+        # Criterion 4: Sharpness
+        if not np.isfinite(sharpness) or sharpness < min_sharpness:
+            counters["sharpness"] += 1
+            reject_idx.append(q)
+            reasons.append("sharpness")
+            continue
+        
+        # Passed all checks
+        pass_idx.append(q)
+    
+    markers = np.zeros(N, dtype=bool)
+    markers[reject_idx] = True
+    
+    features = {
+        "peak_z": peak_z_vals,
+        "duration_ms": durations,
+        "bandpower_rms": bandpowers,
+        "sharpness": sharpness_vals,
+    }
+    
+    return FastRejectionResult(pass_idx, reject_idx, reasons, markers, counters, features)
 
 
 # -----------------------------------------------------------------------------

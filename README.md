@@ -220,15 +220,3 @@ python -c "from ripple_core.labels import get_region_category; print(get_region_
 2. Import in `__init__.py` if needed
 3. Document with docstrings
 4. Create a script in `scripts/` if it's a workflow
-
----
-
-## Authors
-
-Pesaran Lab - Neural data analysis and ripple detection
-
----
-
-## License
-
-Internal research use - Pesaran Lab

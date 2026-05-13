@@ -397,7 +397,7 @@ def analyze_region(
         print(f"  → Using {len(region_channels)} channels with layout coordinates")
         if len(region_channels) < 3:
             print(f"  ⚠ Too few valid channels after filtering, skipping...")
-        return None
+            return None
     
     region_detections = detections_df[detections_df['bipolar_ch'].isin(region_channels)]
     print(f"Detections: {len(region_detections)}")
